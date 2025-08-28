@@ -1,0 +1,477 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "197678b4",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003418,
+     "end_time": "2025-08-28T02:42:47.173565",
+     "exception": false,
+     "start_time": "2025-08-28T02:42:47.170147",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "# Imports & Setup"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "141c4af8",
+   "metadata": {
+    "_cell_guid": "b1076dfc-b9ad-4769-8c92-a6c4dae69d19",
+    "_uuid": "8f2839f25d086af736a60e9eeb907d3b93b6e0e5",
+    "execution": {
+     "iopub.execute_input": "2025-08-28T02:42:47.180644Z",
+     "iopub.status.busy": "2025-08-28T02:42:47.180328Z",
+     "iopub.status.idle": "2025-08-28T02:42:50.662809Z",
+     "shell.execute_reply": "2025-08-28T02:42:50.661805Z"
+    },
+    "papermill": {
+     "duration": 3.487403,
+     "end_time": "2025-08-28T02:42:50.664252",
+     "exception": false,
+     "start_time": "2025-08-28T02:42:47.176849",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "/kaggle/input/titanic/train.csv\n",
+      "/kaggle/input/titanic/test.csv\n",
+      "/kaggle/input/titanic/gender_submission.csv\n"
+     ]
+    }
+   ],
+   "source": [
+    "import numpy as np\n",
+    "import pandas as pd\n",
+    "\n",
+    "from sklearn.model_selection import train_test_split\n",
+    "from sklearn.tree import DecisionTreeClassifier\n",
+    "from sklearn.ensemble import RandomForestClassifier\n",
+    "from sklearn.metrics import accuracy_score\n",
+    "\n",
+    "import os\n",
+    "for dirname, _, filenames in os.walk('/kaggle/input'):\n",
+    "    for filename in filenames:\n",
+    "        print(os.path.join(dirname, filename))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "dcb086bc",
+   "metadata": {
+    "papermill": {
+     "duration": 0.002334,
+     "end_time": "2025-08-28T02:42:50.669359",
+     "exception": false,
+     "start_time": "2025-08-28T02:42:50.667025",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "# Load & Clean Training Data"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "87681f34",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-08-28T02:42:50.676646Z",
+     "iopub.status.busy": "2025-08-28T02:42:50.675659Z",
+     "iopub.status.idle": "2025-08-28T02:42:50.722753Z",
+     "shell.execute_reply": "2025-08-28T02:42:50.721958Z"
+    },
+    "papermill": {
+     "duration": 0.052181,
+     "end_time": "2025-08-28T02:42:50.724306",
+     "exception": false,
+     "start_time": "2025-08-28T02:42:50.672125",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "train_data = pd.read_csv(\"/kaggle/input/titanic/train.csv\")\n",
+    "\n",
+    "#cleaning up data for processing\n",
+    "columns_to_drop = ['Name', 'Ticket', 'Cabin']\n",
+    "\n",
+    "train_data.drop(columns=columns_to_drop, axis=1, inplace=True)\n",
+    "\n",
+    "age_mean = train_data['Age'].mean()\n",
+    "train_data['Age'] = train_data['Age'].fillna(age_mean)\n",
+    "\n",
+    "embarked = train_data['Embarked'].mode()[0]\n",
+    "train_data['Embarked'] = train_data['Embarked'].fillna(embarked)\n",
+    "\n",
+    "train_data = pd.get_dummies(train_data, columns=['Sex', 'Embarked'])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "a41770fd",
+   "metadata": {
+    "papermill": {
+     "duration": 0.002335,
+     "end_time": "2025-08-28T02:42:50.729609",
+     "exception": false,
+     "start_time": "2025-08-28T02:42:50.727274",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "# Load & Clean Test Data"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "e0c31f6b",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-08-28T02:42:50.735929Z",
+     "iopub.status.busy": "2025-08-28T02:42:50.735623Z",
+     "iopub.status.idle": "2025-08-28T02:42:50.755567Z",
+     "shell.execute_reply": "2025-08-28T02:42:50.754868Z"
+    },
+    "papermill": {
+     "duration": 0.024998,
+     "end_time": "2025-08-28T02:42:50.757079",
+     "exception": false,
+     "start_time": "2025-08-28T02:42:50.732081",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "test_data = pd.read_csv(\"/kaggle/input/titanic/test.csv\")\n",
+    "\n",
+    "test_data.drop(columns=columns_to_drop, axis=1, inplace=True)\n",
+    "\n",
+    "test_data['Age'] = test_data['Age'].fillna(age_mean)\n",
+    "\n",
+    "test_data['Embarked'] = test_data['Embarked'].fillna(embarked)\n",
+    "\n",
+    "test_data  = pd.get_dummies(test_data,  columns=['Sex', 'Embarked'])\n",
+    "\n",
+    "fare_mean = train_data['Fare'].mean()\n",
+    "test_data['Fare'] = test_data['Fare'].fillna(fare_mean)\n",
+    "\n",
+    "train_data, test_data = train_data.align(test_data, join='left', axis=1, fill_value=0)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "694efae3",
+   "metadata": {
+    "papermill": {
+     "duration": 0.002244,
+     "end_time": "2025-08-28T02:42:50.762031",
+     "exception": false,
+     "start_time": "2025-08-28T02:42:50.759787",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "# Feature Selection, Train/Test Split & Model Evaluation Functions"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "39f8ebed",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-08-28T02:42:50.768364Z",
+     "iopub.status.busy": "2025-08-28T02:42:50.767703Z",
+     "iopub.status.idle": "2025-08-28T02:42:50.784030Z",
+     "shell.execute_reply": "2025-08-28T02:42:50.783220Z"
+    },
+    "papermill": {
+     "duration": 0.020992,
+     "end_time": "2025-08-28T02:42:50.785439",
+     "exception": false,
+     "start_time": "2025-08-28T02:42:50.764447",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "features = [col for col in train_data.columns if col not in ['PassengerId','Survived']]\n",
+    "\n",
+    "y = train_data[\"Survived\"]\n",
+    "\n",
+    "X = train_data[features]\n",
+    "\n",
+    "train_X, val_X, train_Y, val_Y = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)\n",
+    "\n",
+    "def eval_dt(max_leaf_nodes):\n",
+    "    model = DecisionTreeClassifier(\n",
+    "        max_leaf_nodes=max_leaf_nodes, \n",
+    "        random_state=42\n",
+    "    )\n",
+    "    model.fit(train_X, train_Y)\n",
+    "    preds = model.predict(val_X)\n",
+    "    return accuracy_score(val_Y, preds)\n",
+    "\n",
+    "def eval_rf(max_leaf_nodes):\n",
+    "    model = RandomForestClassifier(\n",
+    "        n_estimators=500,\n",
+    "        max_leaf_nodes=max_leaf_nodes,\n",
+    "        max_depth=None,\n",
+    "        min_samples_split=2,\n",
+    "        min_samples_leaf=1,\n",
+    "        class_weight='balanced',\n",
+    "        random_state=42,\n",
+    "        n_jobs=-1\n",
+    "    )\n",
+    "    model.fit(train_X, train_Y)\n",
+    "    preds = model.predict(val_X)\n",
+    "    return accuracy_score(val_Y, preds)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "11d2314b",
+   "metadata": {
+    "papermill": {
+     "duration": 0.00233,
+     "end_time": "2025-08-28T02:42:50.790651",
+     "exception": false,
+     "start_time": "2025-08-28T02:42:50.788321",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "# Hyperparameter Search & Model Selection"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "cc2ff06e",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-08-28T02:42:50.797037Z",
+     "iopub.status.busy": "2025-08-28T02:42:50.796270Z",
+     "iopub.status.idle": "2025-08-28T02:44:25.296020Z",
+     "shell.execute_reply": "2025-08-28T02:44:25.295141Z"
+    },
+    "papermill": {
+     "duration": 94.506716,
+     "end_time": "2025-08-28T02:44:25.299742",
+     "exception": false,
+     "start_time": "2025-08-28T02:42:50.793026",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Best DT: 52 leaves, val ACC=0.8101\n",
+      "Best RF: 67 leaves, val ACC=0.8380\n"
+     ]
+    }
+   ],
+   "source": [
+    "dt_scores = [(k, eval_dt(k)) for k in range(4, 81)]\n",
+    "rf_scores = [(k, eval_rf(k)) for k in range(4, 81)]\n",
+    "\n",
+    "best_dt = max(dt_scores, key=lambda x: x[1])\n",
+    "best_rf = max(rf_scores, key=lambda x: x[1])\n",
+    "print(f\"Best DT: {best_dt[0]} leaves, val ACC={best_dt[1]:.4f}\")\n",
+    "print(f\"Best RF: {best_rf[0]} leaves, val ACC={best_rf[1]:.4f}\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c7ce5ff1",
+   "metadata": {
+    "papermill": {
+     "duration": 0.002328,
+     "end_time": "2025-08-28T02:44:25.304664",
+     "exception": false,
+     "start_time": "2025-08-28T02:44:25.302336",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "# Train Final Best Model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "id": "ccd09dfe",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-08-28T02:44:25.311712Z",
+     "iopub.status.busy": "2025-08-28T02:44:25.311423Z",
+     "iopub.status.idle": "2025-08-28T02:44:26.413647Z",
+     "shell.execute_reply": "2025-08-28T02:44:26.412806Z"
+    },
+    "papermill": {
+     "duration": 1.106903,
+     "end_time": "2025-08-28T02:44:26.415057",
+     "exception": false,
+     "start_time": "2025-08-28T02:44:25.308154",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style>#sk-container-id-1 {color: black;background-color: white;}#sk-container-id-1 pre{padding: 0;}#sk-container-id-1 div.sk-toggleable {background-color: white;}#sk-container-id-1 label.sk-toggleable__label {cursor: pointer;display: block;width: 100%;margin-bottom: 0;padding: 0.3em;box-sizing: border-box;text-align: center;}#sk-container-id-1 label.sk-toggleable__label-arrow:before {content: \"▸\";float: left;margin-right: 0.25em;color: #696969;}#sk-container-id-1 label.sk-toggleable__label-arrow:hover:before {color: black;}#sk-container-id-1 div.sk-estimator:hover label.sk-toggleable__label-arrow:before {color: black;}#sk-container-id-1 div.sk-toggleable__content {max-height: 0;max-width: 0;overflow: hidden;text-align: left;background-color: #f0f8ff;}#sk-container-id-1 div.sk-toggleable__content pre {margin: 0.2em;color: black;border-radius: 0.25em;background-color: #f0f8ff;}#sk-container-id-1 input.sk-toggleable__control:checked~div.sk-toggleable__content {max-height: 200px;max-width: 100%;overflow: auto;}#sk-container-id-1 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {content: \"▾\";}#sk-container-id-1 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {background-color: #d4ebff;}#sk-container-id-1 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {background-color: #d4ebff;}#sk-container-id-1 input.sk-hidden--visually {border: 0;clip: rect(1px 1px 1px 1px);clip: rect(1px, 1px, 1px, 1px);height: 1px;margin: -1px;overflow: hidden;padding: 0;position: absolute;width: 1px;}#sk-container-id-1 div.sk-estimator {font-family: monospace;background-color: #f0f8ff;border: 1px dotted black;border-radius: 0.25em;box-sizing: border-box;margin-bottom: 0.5em;}#sk-container-id-1 div.sk-estimator:hover {background-color: #d4ebff;}#sk-container-id-1 div.sk-parallel-item::after {content: \"\";width: 100%;border-bottom: 1px solid gray;flex-grow: 1;}#sk-container-id-1 div.sk-label:hover label.sk-toggleable__label {background-color: #d4ebff;}#sk-container-id-1 div.sk-serial::before {content: \"\";position: absolute;border-left: 1px solid gray;box-sizing: border-box;top: 0;bottom: 0;left: 50%;z-index: 0;}#sk-container-id-1 div.sk-serial {display: flex;flex-direction: column;align-items: center;background-color: white;padding-right: 0.2em;padding-left: 0.2em;position: relative;}#sk-container-id-1 div.sk-item {position: relative;z-index: 1;}#sk-container-id-1 div.sk-parallel {display: flex;align-items: stretch;justify-content: center;background-color: white;position: relative;}#sk-container-id-1 div.sk-item::before, #sk-container-id-1 div.sk-parallel-item::before {content: \"\";position: absolute;border-left: 1px solid gray;box-sizing: border-box;top: 0;bottom: 0;left: 50%;z-index: -1;}#sk-container-id-1 div.sk-parallel-item {display: flex;flex-direction: column;z-index: 1;position: relative;background-color: white;}#sk-container-id-1 div.sk-parallel-item:first-child::after {align-self: flex-end;width: 50%;}#sk-container-id-1 div.sk-parallel-item:last-child::after {align-self: flex-start;width: 50%;}#sk-container-id-1 div.sk-parallel-item:only-child::after {width: 0;}#sk-container-id-1 div.sk-dashed-wrapped {border: 1px dashed gray;margin: 0 0.4em 0.5em 0.4em;box-sizing: border-box;padding-bottom: 0.4em;background-color: white;}#sk-container-id-1 div.sk-label label {font-family: monospace;font-weight: bold;display: inline-block;line-height: 1.2em;}#sk-container-id-1 div.sk-label-container {text-align: center;}#sk-container-id-1 div.sk-container {/* jupyter's `normalize.less` sets `[hidden] { display: none; }` but bootstrap.min.css set `[hidden] { display: none !important; }` so we also need the `!important` here to be able to override the default hidden behavior on the sphinx rendered scikit-learn.org. See: https://github.com/scikit-learn/scikit-learn/issues/21755 */display: inline-block !important;position: relative;}#sk-container-id-1 div.sk-text-repr-fallback {display: none;}</style><div id=\"sk-container-id-1\" class=\"sk-top-container\"><div class=\"sk-text-repr-fallback\"><pre>RandomForestClassifier(class_weight=&#x27;balanced&#x27;, max_leaf_nodes=67,\n",
+       "                       n_estimators=500, n_jobs=-1, random_state=42)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class=\"sk-container\" hidden><div class=\"sk-item\"><div class=\"sk-estimator sk-toggleable\"><input class=\"sk-toggleable__control sk-hidden--visually\" id=\"sk-estimator-id-1\" type=\"checkbox\" checked><label for=\"sk-estimator-id-1\" class=\"sk-toggleable__label sk-toggleable__label-arrow\">RandomForestClassifier</label><div class=\"sk-toggleable__content\"><pre>RandomForestClassifier(class_weight=&#x27;balanced&#x27;, max_leaf_nodes=67,\n",
+       "                       n_estimators=500, n_jobs=-1, random_state=42)</pre></div></div></div></div></div>"
+      ],
+      "text/plain": [
+       "RandomForestClassifier(class_weight='balanced', max_leaf_nodes=67,\n",
+       "                       n_estimators=500, n_jobs=-1, random_state=42)"
+      ]
+     },
+     "execution_count": 6,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "best_rf_model = RandomForestClassifier(\n",
+    "    n_estimators=500,\n",
+    "    max_leaf_nodes=best_rf[0],\n",
+    "    class_weight='balanced',\n",
+    "    random_state=42,\n",
+    "    n_jobs=-1\n",
+    ")\n",
+    "best_rf_model.fit(X, y)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "17938196",
+   "metadata": {
+    "papermill": {
+     "duration": 0.002688,
+     "end_time": "2025-08-28T02:44:26.420743",
+     "exception": false,
+     "start_time": "2025-08-28T02:44:26.418055",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "# Make Predictions & Save Submission"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "b26622b8",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-08-28T02:44:26.427483Z",
+     "iopub.status.busy": "2025-08-28T02:44:26.427183Z",
+     "iopub.status.idle": "2025-08-28T02:44:26.600794Z",
+     "shell.execute_reply": "2025-08-28T02:44:26.599833Z"
+    },
+    "papermill": {
+     "duration": 0.178509,
+     "end_time": "2025-08-28T02:44:26.602022",
+     "exception": false,
+     "start_time": "2025-08-28T02:44:26.423513",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Your submission was successfully saved!\n"
+     ]
+    }
+   ],
+   "source": [
+    "test_X = test_data[features]\n",
+    "predictions = best_rf_model.predict(test_X)\n",
+    "\n",
+    "output = pd.DataFrame({'PassengerId': test_data.PassengerId, 'Survived': predictions})\n",
+    "output.to_csv('submission.csv', index=False)\n",
+    "print(\"Your submission was successfully saved!\")"
+   ]
+  }
+ ],
+ "metadata": {
+  "kaggle": {
+   "accelerator": "none",
+   "dataSources": [
+    {
+     "databundleVersionId": 26502,
+     "sourceId": 3136,
+     "sourceType": "competition"
+    }
+   ],
+   "dockerImageVersionId": 31089,
+   "isGpuEnabled": false,
+   "isInternetEnabled": false,
+   "language": "python",
+   "sourceType": "notebook"
+  },
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.11.13"
+  },
+  "papermill": {
+   "default_parameters": {},
+   "duration": 104.901826,
+   "end_time": "2025-08-28T02:44:27.223185",
+   "environment_variables": {},
+   "exception": null,
+   "input_path": "__notebook__.ipynb",
+   "output_path": "__notebook__.ipynb",
+   "parameters": {},
+   "start_time": "2025-08-28T02:42:42.321359",
+   "version": "2.6.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
